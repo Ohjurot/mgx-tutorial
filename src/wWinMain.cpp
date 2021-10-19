@@ -41,16 +41,31 @@ class ColorKey : public Core::WindowEventListener
 {
     public:
         float quadColor[3] = { 0.0f, 0.5f, 0.5f };
+        float scaling = 0.2f;
 
         inline MGX::Core::WindowEventResult OnWindowEvent(MGX::Core::WindowEvent& e) override
         {
-            if (e.msg == WM_KEYDOWN && e.wParam == VK_SPACE)
+            if (e.msg == WM_KEYDOWN)
             {
-                quadColor[0] = 0.7f;
+                if (e.wParam == VK_SPACE)
+                {
+                    quadColor[0] = 0.7f;
+                }
+                else if (e.wParam == VK_UP)
+                {
+                    scaling = std::min(1.0f, scaling + 0.05f);
+                }
+                else if (e.wParam == VK_DOWN)
+                {
+                    scaling = std::max(0.05f, scaling - 0.05f);
+                }
             }
-            else if (e.msg == WM_KEYUP && e.wParam == VK_SPACE)
+            else if (e.msg == WM_KEYUP)
             {
-                quadColor[0] = 0.0f;
+                if (e.wParam == VK_SPACE)
+                {
+                    quadColor[0] = 0.0f;
+                }
             }
 
             return Core::WindowEventResult::NotHandled;
@@ -93,15 +108,19 @@ INT wWinMain_safe(HINSTANCE hInstance, HINSTANCE hPrevHinstance, PWSTR cmdArgs, 
 
     // Window class color key
     ColorKey colorKey;
+    float aspectRatio;
 
     // Rootsignature configruation
-    Core::GPU::RootConfiguration rootSignatureConfiguration(pipelineState.GetType(), 1, 
-        Core::GPU::RootConfigurationEntry::MakeRootConstant(3, colorKey.quadColor)
+    Core::GPU::RootConfiguration rootSignatureConfiguration(pipelineState.GetType(), 3, 
+        Core::GPU::RootConfigurationEntry::MakeRootConstant(3, colorKey.quadColor),
+        Core::GPU::RootConfigurationEntry::MakeRootConstant(1, &aspectRatio),
+        Core::GPU::RootConfigurationEntry::MakeRootConstant(1, &colorKey.scaling)
     );
 
     // Create window
     Core::Window window(L"Tutorial Window", device, commandQueue, rtvDescriptorHeap.Allocate(3));
     window.AddWindowEventListener(&colorKey);
+    aspectRatio = (float)window.GetHeight() / (float)window.GetWidth();
     D3D12_RECT windowScissorRect = window.GetScissorRect();
     D3D12_VIEWPORT windowViewport = window.GetViewport();
 
@@ -113,6 +132,7 @@ INT wWinMain_safe(HINSTANCE hInstance, HINSTANCE hPrevHinstance, PWSTR cmdArgs, 
         {
             commandQueue.Flush(window.GetBufferCount());
             window.ResizeNow(device);
+            aspectRatio = (float)window.GetHeight() / (float)window.GetWidth();
             windowScissorRect = window.GetScissorRect();
             windowViewport = window.GetViewport();
         }

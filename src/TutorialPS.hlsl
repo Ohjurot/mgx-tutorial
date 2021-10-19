@@ -3,7 +3,8 @@
 const float3 color : register(b0);
 
 [RootSignature(TUTORIAL_ROOT_SIGNATURE)]
-float4 main() : SV_TARGET
+float4 main(in VertexData pxd) : SV_TARGET
 {
-	return float4(color, 1.0f);
+	float dist = smoothstep(0.0f, 2.8f * ddx(pxd.uv.x), 1.0f - length(pxd.uv));
+	return float4(color * dist, 1.0f);
 }
