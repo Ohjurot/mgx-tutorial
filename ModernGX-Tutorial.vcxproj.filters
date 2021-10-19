@@ -21,5 +21,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />
+    <None Include="src\Tutorial.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="data\TutorialPipeline.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="src\TutorialVS.hlsl" />
+    <FxCompile Include="src\TutorialPS.hlsl" />
   </ItemGroup>
 </Project>
