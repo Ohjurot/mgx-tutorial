@@ -17,6 +17,8 @@
 #include <ModernGX/Core/GPU/GPUPipelineState.h>
 #include <ModernGX/Core/GPU/GPURootConfiguration.h>
 #include <ModernGX/Core/GPUTypes/GTypeBuffer.h>
+#include <ModernGX/Core/GPUTypes/GTypeTexture.h>
+#include <ModernGX/Coding/TextureCoding.h>
 #include <ModernGX/Helpers/GPUUploadStack.h>
 
 using namespace MGX;
@@ -89,7 +91,7 @@ INT wWinMain_safe(HINSTANCE hInstance, HINSTANCE hPrevHinstance, PWSTR cmdArgs, 
     Core::GPU::PipelineState pipelineState(device, L"./TutorialPipeline.xml");
 
     // Upload buffer
-    Helpers::GPUUploadStack uploadBuffer(device, 1024 * 1024 * 16);
+    Helpers::GPUUploadStack uploadBuffer(device, 1024 * 1024 * 128);
     uploadBuffer.Reset(&commandList);
 
     // Vertex buffer
@@ -100,8 +102,19 @@ INT wWinMain_safe(HINSTANCE hInstance, HINSTANCE hPrevHinstance, PWSTR cmdArgs, 
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
     vertexBuffer.CreateVBV<Vertex>(&vertexBufferView, 4);
 
+    // Texture
+    Coding::TextureFile pngFile(L"test.png");
+    Core::GType::Texture texture(device, Core::GPU::HeapUsage::Default, pngFile.GetDxgiFormat(), 
+        pngFile.GetWidth(), pngFile.GetHeight(), 1);
+    uploadBuffer.CopyTexture(&texture, &pngFile);
+
+    // SRV For texture
+    auto srvHandleRange = srvDescriptorHeap.Allocate(1);
+    texture.CreateSRV(device, srvHandleRange[0]);
+
     // Set resource states
     vertexBuffer.SetResourceState(D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, commandList.ResourceBarrierPeekAndPush());
+    texture.SetResourceState(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, commandList.ResourceBarrierPeekAndPush());
 
     // Close upload buffer
     uploadBuffer.Close();
@@ -111,10 +124,11 @@ INT wWinMain_safe(HINSTANCE hInstance, HINSTANCE hPrevHinstance, PWSTR cmdArgs, 
     float aspectRatio;
 
     // Rootsignature configruation
-    Core::GPU::RootConfiguration rootSignatureConfiguration(pipelineState.GetType(), 3, 
+    Core::GPU::RootConfiguration rootSignatureConfiguration(pipelineState.GetType(), 4, 
         Core::GPU::RootConfigurationEntry::MakeRootConstant(3, colorKey.quadColor),
         Core::GPU::RootConfigurationEntry::MakeRootConstant(1, &aspectRatio),
-        Core::GPU::RootConfigurationEntry::MakeRootConstant(1, &colorKey.scaling)
+        Core::GPU::RootConfigurationEntry::MakeRootConstant(1, &colorKey.scaling),
+        Core::GPU::RootConfigurationEntry::MakeDescriptorTable(srvHandleRange[0])
     );
 
     // Create window
@@ -143,6 +157,7 @@ INT wWinMain_safe(HINSTANCE hInstance, HINSTANCE hPrevHinstance, PWSTR cmdArgs, 
 
         // BIND states
         pipelineState.Bind(commandList);
+        commandList.SetHeaps(srvDescriptorHeap);
         rootSignatureConfiguration.Bind(commandList);
         commandList.IASetBuffer(&vertexBufferView, D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
         commandList.RSSetViewportAndRect(&windowViewport, &windowScissorRect);

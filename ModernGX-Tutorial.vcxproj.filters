@@ -30,4 +30,9 @@
     <FxCompile Include="src\TutorialVS.hlsl" />
     <FxCompile Include="src\TutorialPS.hlsl" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="data\test.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
 </Project>
